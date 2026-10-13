@@ -161,7 +161,7 @@ export class ProfileService {
         }
       };
     }
-    if (!['athena', 'common_core', 'profile0', 'metadata'].includes(profileId)) {
+    if (!['athena', 'common_core', 'common_public', 'profile0', 'metadata'].includes(profileId)) {
       return { status: 404, body: { errorCode: 'fortnite.game.profile.ProfileNotFound', errorMessage: `Profile '${profileId}' is not available.`, numericErrorCode: 404, profileId } };
     }
     let resultProfile;
@@ -175,7 +175,7 @@ export class ProfileService {
         resultProfile = structuredClone(profile);
         return true;
       }
-      if (profileId !== 'athena') {
+      if (profileId !== 'athena' && operation.toLowerCase() !== 'setmtxplatform') {
         throw new Error(`Operation ${operation} is not supported for ${profileId}`);
       }
       switch (operation.toLowerCase()) {
@@ -204,12 +204,21 @@ export class ProfileService {
           changedItemIds = ids;
           break;
         }
+        case 'setmtxplatform': {
+          if (!profile.stats.attributes) profile.stats.attributes = {};
+          profile.stats.attributes.mtx_platform = String(body.platform ?? body.targetPlatform ?? '');
+          break;
+        }
         case 'setitemfavoritestatus': {
           const itemId = String(body.itemId ?? '');
           if (!profile.items[itemId]) throw new Error(`Item '${itemId}' is not owned.`);
           profile.items[itemId].attributes.favorite = Boolean(body.bFavorite);
           changedItemIds = [itemId];
           break;
+        }
+        case 'clientquestlogin': {
+          resultProfile = structuredClone(profile);
+          return true;
         }
         default:
           throw new Error(`Unsupported Athena operation: ${operation}`);
@@ -220,7 +229,8 @@ export class ProfileService {
       resultProfile = structuredClone(profile);
       return true;
     });
-    if (operation.toLowerCase() === 'queryprofile') return { status: 200, body: fullProfileResponse(resultProfile, -1) };
+    if (operation.toLowerCase() === 'queryprofile' || operation.toLowerCase() === 'clientquestlogin') return { status: 200, body: fullProfileResponse(resultProfile, -1) };
+    if (operation.toLowerCase() === 'setmtxplatform') return { status: 200, body: fullProfileResponse(resultProfile, oldRevision) };
     return {
       status: 200,
       body: {

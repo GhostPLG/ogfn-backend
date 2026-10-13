@@ -113,6 +113,7 @@ export class AuthService {
       state.profiles[account.id] = {
         athena: createAthenaProfile(account.id),
         common_core: createEmptyProfile(account.id, 'common_core', this.config.store.startingVbucks),
+        common_public: createEmptyProfile(account.id, 'common_public'),
         profile0: createEmptyProfile(account.id, 'profile0'),
         metadata: createEmptyProfile(account.id, 'metadata')
       };
@@ -147,7 +148,7 @@ export class AuthService {
     let clientId = input.client_id ?? input.clientId;
     let clientSecret = input.client_secret ?? input.clientSecret;
     const authorization = input.authorization ?? '';
-    if (authorization.startsWith('Basic ')) {
+    if (/^basic\s+/iu.test(authorization)) {
       let decoded;
       try {
         decoded = Buffer.from(authorization.slice(6), 'base64').toString('utf8');

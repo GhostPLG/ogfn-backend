@@ -138,6 +138,15 @@ export async function createBackend(config) {
   };
 
   const app = express();
+
+  app.use((request, response, next) => {
+    const started = Date.now();
+    response.on('finish', () => {
+      console.log(`[req] ${request.method} ${request.originalUrl} -> ${response.statusCode} (${Date.now() - started}ms)`);
+    });
+    next();
+  });
+
   app.disable('x-powered-by');
   app.set('trust proxy', false);
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
@@ -244,6 +253,7 @@ export async function createBackend(config) {
 
   app.post('/account/api/oauth/token', async (request, response) => {
     const body = request.body ?? {};
+    console.log('[token] esperado =', auth.config.oauth.clientId + ':' + auth.config.oauth.clientSecret, '| recebido =', Buffer.from(String(request.headers.authorization ?? '').replace(/^Basic\s+/i, ''), 'base64').toString('utf8'));
     try {
       const { clientId, authenticatedClient } = auth.validateClient({ client_id: body.client_id, client_secret: body.client_secret, authorization: request.get('authorization') });
       const grantType = String(body.grant_type ?? '');
@@ -348,6 +358,168 @@ export async function createBackend(config) {
   });
 
   app.get('/fortnite/api/v2/fortnite/br-news', (_request, response) => response.json(news.getNews('br')));
+
+  app.get('/fortnite/api/v2/versioncheck/Windows', (request, response) => {
+    response.json({
+      type: 'NO_UPDATE',
+      version: '++Fortnite+Release-4.5-CL-4159770-Windows'
+    });
+  });
+
+  app.get('/fortnite/api/cloudstorage/system', (request, response) => {
+    response.json([]);
+  });
+
+  app.delete('/account/api/oauth/sessions/kill', (request, response) => {
+    response.status(204).end();
+  });
+
+  app.get('/account/api/public/account/:accountId/externalAuths', (request, response) => {
+    response.json([]);
+  });
+
+  app.post('/fortnite/api/game/v2/tryPlayOnPlatform/account/:accountId', (request, response) => {
+    response.set('Content-Type', 'text/plain');
+    response.send('true');
+  });
+
+  // Cloudstorage do usuário
+  app.get('/fortnite/api/cloudstorage/user/:accountId', (request, response) => {
+    response.json([]);
+  });
+
+  // Config de sistema
+  app.get('/fortnite/api/cloudstorage/system/config', (request, response) => {
+    response.json({});
+  });
+
+  // Timeline (eventos / season)
+  app.get('/fortnite/api/calendar/v1/timeline', (request, response) => {
+    response.json({
+      channels: {
+        'client-matchmaking': { states: [], cacheExpire: '2099-01-01T00:00:00.000Z' },
+        'client-events': {
+          states: [{
+            validFrom: '2020-01-01T00:00:00.000Z',
+            activeEvents: [{ eventType: 'EventFlag.Season', activeUntil: '2099-01-01T00:00:00.000Z', activeSince: '2020-01-01T00:00:00.000Z' }],
+            state: { activeEvents: [{ eventType: 'EventFlag.Season', activeUntil: '2099-01-01T00:00:00.000Z', activeSince: '2020-01-01T00:00:00.000Z' }] }
+          }],
+          cacheExpire: '2099-01-01T00:00:00.000Z'
+        }
+      },
+      eventsTimeOffsetHrs: 0,
+      cacheIntervalSeconds: 60,
+      currentTime: new Date().toISOString()
+    });
+  });
+
+  // Loja
+  app.get('/fortnite/api/storefront/v2/catalog', (request, response) => {
+    response.json({
+      refreshIntervalHrs: 24,
+      dailyPurchaseHrs: 24,
+      expiration: '2099-01-01T00:00:00.000Z',
+      storefronts: [
+        { name: 'BRDailyStorefront', catalogEntries: [] },
+        { name: 'BRWeeklyStorefront', catalogEntries: [] }
+      ]
+    });
+  });
+
+  // Lista de amigos
+  app.get('/friends/api/public/list/fortnite/:accountId', (request, response) => {
+    response.json({ friends: [], incoming: [], outgoing: [], suggested: [], blocklist: [], settings: { acceptInvites: 'public' } });
+  });
+
+  // Presença
+  app.get('/presence/api/v1/_/fortnite/:accountId', (request, response) => {
+    response.json([]);
+  });
+
+  app.get('/lightswitch/api/service/bulk/status', (request, response) => {
+    response.json([{
+      serviceInstanceId: 'fortnite',
+      status: 'UP',
+      message: 'Fortnite is online',
+      maintenanceUri: null,
+      overrideCatalogIds: ['a7f138b2e51945ffbfdacc1af0541053'],
+      allowedActions: ['PLAY', 'DOWNLOAD'],
+      banned: false,
+      launcherInfoDTO: {
+        appName: 'Fortnite',
+        catalogItemId: '4fe75bbc5a674f4f9b356b5c90567da5',
+        namespace: 'fn'
+      }
+    }]);
+  });
+
+  app.get('/lightswitch/api/service/Fortnite/status', (request, response) => {
+    response.json({
+      serviceInstanceId: 'fortnite',
+      status: 'UP',
+      message: 'Fortnite is online',
+      maintenanceUri: null,
+      overrideCatalogIds: ['a7f138b2e51945ffbfdacc1af0541053'],
+      allowedActions: [],
+      banned: false,
+      launcherInfoDTO: {
+        appName: 'Fortnite',
+        catalogItemId: '4fe75bbc5a674f4f9b356b5c90567da5',
+        namespace: 'fn'
+      }
+    });
+  });
+
+  app.get('/fortnite/api/game/v2/enabled_features', (request, response) => {
+    response.json([]);
+  });
+
+  app.post('/fortnite/api/game/v2/grant_access/:accountId', (request, response) => {
+    response.status(204).end();
+  });
+
+  app.get('/fortnite/api/receipts/v1/account/:accountId/receipts', (request, response) => {
+    response.json([]);
+  });
+
+  app.get('/fortnite/api/matchmaking/session/findPlayer/:accountId', authenticate, (request, response) => {
+    response.status(200).end();
+  });
+
+  app.get('/friends/api/public/friends/:accountId', authenticate, (request, response) => {
+    response.json([]);
+  });
+
+  app.get('/friends/api/public/blocklist/:accountId', authenticate, (request, response) => {
+    response.json({ blockedUsers: [] });
+  });
+
+  app.get('/content/api/pages/fortnite-game', (request, response) => {
+    response.json({
+      _title: 'fortnite-game',
+      _activeDate: '2020-01-01T00:00:00.000Z',
+      lastModified: '2020-01-01T00:00:00.000Z',
+      _locale: 'en-US',
+      _templateName: 'FortniteGame',
+      _suggestedPrefetch: [],
+      _noIndex: false
+    });
+  });
+
+  app.get('/fortnite/api/game/v2/matchmakingservice/ticket/player/:accountId', authenticate, (request, response) => {
+    const bucketId = String(request.query.bucketId ?? '0:0:0:playlist_defaultsolo');
+    const token = bearerToken(request);
+    response.cookie('currentbuildUniqueId', bucketId.split(':')[0]);
+    response.json({
+      serviceUrl: token
+        ? `ws://127.0.0.1:${config.server.port}/matchmaker/ws?access_token=${encodeURIComponent(token)}`
+        : 'ws://127.0.0.1',
+      ticketType: 'mms-player',
+      payload: '69=',
+      signature: '420='
+    });
+  });
+
   app.get('/fortnite/api/v2/fortnite/stw-news', (_request, response) => response.json(news.getNews('stw')));
   app.get('/fortnite/api/BRDynamicNews', (_request, response) => response.json(news.getNews('br')));
   app.get('/fortnite/api/fortnite-br/surfaces/:surface/target', (request, response) => response.json(news.getNews(request.params.surface.includes('stw') ? 'stw' : 'br')));
@@ -655,7 +827,15 @@ export async function createBackend(config) {
       const token = /^Bearer\s+(.+)$/iu.exec(request.headers.authorization ?? '')?.[1] ?? url.searchParams.get('access_token');
       const playerAuth = await auth.authenticateHeader(token ? `Bearer ${token}` : '');
       if (!playerAuth.account) throw new Error('A player token is required.');
-      wss.handleUpgrade(request, socket, head, (websocket) => matchmaker.subscribe(playerAuth.account.id, websocket));
+      wss.handleUpgrade(request, socket, head, (websocket) => {
+        const send = (name, payload) => websocket.send(JSON.stringify({ name, payload }));
+        send('StatusUpdate', { state: 'Connecting' });
+        setTimeout(() => send('StatusUpdate', { totalPlayers: 1, connectedPlayers: 1, state: 'Waiting' }), 800);
+        setTimeout(() => send('StatusUpdate', { ticketId: 'ticket', queuedPlayers: 0, estimatedWaitSec: 0, status: {}, state: 'Queued' }), 1800);
+        setTimeout(() => send('StatusUpdate', { matchId: 'match', state: 'SessionAssignment' }), 3800);
+        setTimeout(() => send('Play', { matchId: 'match', sessionId: 'session', joinDelaySec: 1 }), 5800);
+        websocket.on('close', () => {});
+      });
     } catch {
       socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
       socket.destroy();
