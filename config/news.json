@@ -1,0 +1,51 @@
+{
+  "emergencyNotice": "",
+  "battleroyalenews": {
+    "title": "Old Generation Fortnite",
+    "motds": [
+      {
+        "id": "ogfn-welcome",
+        "title": "Welcome to the local OGFN test server",
+        "body": "This is a community development backend. News is editable in config/news.json.",
+        "image": "",
+        "tabTitle": "News",
+        "sortingPriority": 10,
+        "hidden": false
+      },
+      {
+        "id": "ogfn-shop",
+        "title": "The item shop is open",
+        "body": "Shop offers and prices are editable in config/shop.json.",
+        "image": "",
+        "tabTitle": "Shop",
+        "sortingPriority": 20,
+        "hidden": false
+      }
+    ]
+  },
+    "stwnews": {
+      "title": "Save the World",
+      "motds": [
+        {
+          "id": "ogfn-stw-locked",
+          "title": "Save the World access",
+          "body": "This local account does not own Save the World. Purchase access is required.",
+          "image": "",
+          "tabTitle": "Save the World",
+          "sortingPriority": 10,
+          "hidden": false
+        }
+      ]
+    },
+    "banners": [
+      {
+        "id": "ogfn-local-banner",
+        "title": "Community test server",
+        "body": "Local development environment; not an Epic Games service.",
+        "image": "",
+        "mode": "br",
+        "sortingPriority": 1,
+        "hidden": false
+      }
+    ]
+  }

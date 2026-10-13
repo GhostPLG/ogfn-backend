@@ -1,0 +1,25 @@
+{
+  "name": "ogfn-backend-local",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build-specific local backend and matchmaking development harness for an OGFN project.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "start:backend": "GS_ADAPTER_ENABLED=false node src/index.js",
+    "start:gameserver": "node src/gameserver-only.js",
+    "test": "node --test",
+    "check": "node --check src/index.js && node --check src/server.js && node --check src/auth.js && node --check src/profile.js && node --check src/shop.js && node --check src/news.js && node --check src/lobby.js && node --check src/matchmaker.js && node --check src/gameserver.js && node --check src/gameserver-only.js && node --check src/graphql.js && node --check src/store.js && node --check src/config.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "graphql": "^16.11.0",
+    "graphql-http": "^1.22.4",
+    "helmet": "^8.1.0",
+    "ws": "^8.18.3"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 5595,
+    "allowedOrigins": [
+      "*"
+    ]
+  },
+  "oauth": {
+    "clientId": "ogfn-local-launcher",
+    "clientSecret": "change-this-development-secret",
+    "clientService": "prod-fn",
+    "productId": "prod-fn",
+    "applicationId": "ogfn-local",
+    "internalClient": true,
+    "allowRegistration": true,
+    "allowPasswordGrant": true,
+    "accessTokenSeconds": 3600,
+    "refreshTokenSeconds": 604800,
+    "authorizationCodeSeconds": 120,
+    "exchangeCodeSeconds": 60,
+    "redirectUris": [
+      "http://localhost:8080/callback",
+      "http://127.0.0.1:8080/callback",
+      "ogfn://auth/callback"
+    ]
+  },
+  "gameServer": {
+    "adapterEnabled": true,
+    "bindHost": "127.0.0.1",
+    "publicHost": "127.0.0.1",
+    "port": 7777,
+    "controlUrl": "http://127.0.0.1:7777",
+    "internalSecret": "replace-this-development-gameserver-secret",
+    "maxPlayers": 100
+  },
+  "matchmaking": {
+    "minPlayers": 1,
+    "matchFillWindowMilliseconds": 500,
+    "maxPlayers": 100,
+    "queueTimeoutSeconds": 180,
+    "defaultPlaylist": "Playlist_DefaultSolo",
+    "defaultRegion": "EU",
+    "sessionKey": "replace-this-development-session-key"
+  },
+  "store": {
+    "startingVbucks": 1000
+  },
+  "dataDir": "./data"
+}
