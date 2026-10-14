@@ -495,14 +495,126 @@ export async function createBackend(config) {
   });
 
   app.get('/content/api/pages/fortnite-game', (request, response) => {
+    const accept = String(request.headers['accept-language'] ?? '');
+    const lang = accept
+      ? (accept === 'es-419' || accept === 'pt-BR' || !accept.includes('-') ? accept : accept.split('-')[0])
+      : 'en';
+    const T = (dict) => dict[lang] ?? dict.en;
+
     response.json({
-      _title: 'fortnite-game',
-      _activeDate: '2020-01-01T00:00:00.000Z',
-      lastModified: '2020-01-01T00:00:00.000Z',
-      _locale: 'en-US',
-      _templateName: 'FortniteGame',
-      _suggestedPrefetch: [],
-      _noIndex: false
+      _title: 'Fortnite Game',
+      _activeDate: '2017-08-30T03:20:48.050Z',
+      lastModified: '2019-11-01T17:33:35.346Z',
+      _locale: lang,
+
+      subgameselectdata: {
+        battleRoyale: {
+          _type: 'CommonUI Simple Message',
+          message: {
+            image: '',
+            hidden: false,
+            messagetype: 'normal',
+            _type: 'CommonUI Simple Message Base',
+            title: T({
+              en: '100 Player PvP',
+              'pt-BR': 'PvP de 100 jogadores',
+              'es-419': 'JcJ de 100 jugadores'
+            }),
+            body: T({
+              en: '100 Player PvP Battle Royale.\n\nPvE progress does not affect Battle Royale.',
+              'pt-BR': 'Battle Royale PvP de 100 jogadores.\n\nO progresso no JcE não afeta o Battle Royale.',
+              'es-419': 'Battle Royale JcJ de 100 jugadores.\n\nEl progreso JcE no afecta a Battle Royale.'
+            }),
+            spotlight: false
+          }
+        },
+        saveTheWorld: {
+          _type: 'CommonUI Simple Message',
+          message: {
+            image: '',
+            hidden: false,
+            messagetype: 'normal',
+            _type: 'CommonUI Simple Message Base',
+            title: T({ en: 'Co-op PvE', 'pt-BR': 'PvE Cooperativo', 'es-419': 'JcE cooperativo' }),
+            body: T({
+              en: 'Cooperative PvE adventure!\n\nFight off the Storm and save the world!',
+              'pt-BR': 'Aventura PvE cooperativa!\n\nEnfrente a Tempestade e salve o mundo!',
+              'es-419': '¡Aventura de JcE cooperativa!\n\n¡Combate la tormenta y salva el mundo!'
+            }),
+            spotlight: false
+          }
+        },
+        creative: {
+          _type: 'CommonUI Simple Message',
+          message: {
+            image: '',
+            hidden: false,
+            messagetype: 'normal',
+            _type: 'CommonUI Simple Message Base',
+            title: T({ en: 'Creative', 'pt-BR': 'Criativo', 'es-419': 'Creativo' }),
+            body: T({
+              en: 'Your island. Your friends. Your rules.\n\nDiscover new ways to play Fortnite: play community-made games and build anything on your own island.',
+              'pt-BR': 'Sua ilha. Seus amigos. Suas regras.\n\nDescubra novas formas de jogar Fortnite: jogue criações da comunidade e construa o que quiser na sua ilha.',
+              'es-419': 'Tus islas. Tus amigos. Tus reglas.\n\nDescubre nuevas formas de jugar Fortnite: juega creaciones de la comunidad y construye lo que quieras en tu isla.'
+            }),
+            spotlight: false
+          }
+        },
+        saveTheWorldUnowned: {
+          _type: 'CommonUI Simple Message',
+          message: {
+            image: '',
+            hidden: false,
+            messagetype: 'normal',
+            _type: 'CommonUI Simple Message Base',
+            title: T({ en: 'Co-op PvE', 'pt-BR': 'PvE Cooperativo', 'es-419': 'JcE cooperativo' }),
+            body: T({
+              en: 'Cooperative PvE adventure!\n\nFight off the Storm and save the world!',
+              'pt-BR': 'Aventura PvE cooperativa!\n\nEnfrente a Tempestade e salve o mundo!',
+              'es-419': '¡Aventura de JcE cooperativa!\n\n¡Combate la tormenta y salva el mundo!'
+            }),
+            spotlight: false
+          }
+        },
+        _title: 'subgameselectdata',
+        _noIndex: false,
+        _activeDate: '2019-05-02T16:48:47.429Z',
+        lastModified: '2019-10-29T12:44:06.577Z',
+        _locale: lang
+      },
+
+      subgameinfo: {
+        battleroyale: {
+          image: '',
+          color: '1164c1',
+          _type: 'Subgame Info',
+          description: T({ en: '100 Player PvP', 'pt-BR': 'PvP de 100 jogadores', 'es-419': 'JcJ de 100 jugadores' }),
+          subgame: 'battleroyale',
+          standardMessageLine1: ''
+        },
+        savetheworld: {
+          image: '',
+          color: '7615E9FF',
+          specialMessage: '',
+          _type: 'Subgame Info',
+          description: T({ en: 'Cooperative PvE adventure!', 'pt-BR': 'Aventura PvE cooperativa!', 'es-419': '¡Aventura de JcE cooperativa!' }),
+          subgame: 'savetheworld',
+          title: T({ en: 'Save the World', 'pt-BR': 'Salve o Mundo', 'es-419': 'Salva el mundo' })
+        },
+        creative: {
+          image: '',
+          color: '13BDA1FF',
+          _type: 'Subgame Info',
+          description: T({ en: 'Your island. Your friends. Your rules.', 'pt-BR': 'Sua ilha. Seus amigos. Suas regras.', 'es-419': 'Tus islas. Tus amigos. Tus reglas.' }),
+          subgame: 'creative',
+          title: T({ en: 'Creative', 'pt-BR': 'Criativo', 'es-419': 'Creativo' })
+        },
+        _title: 'SubgameInfo',
+        _noIndex: false,
+        _activeDate: '2019-05-02T16:48:47.429Z',
+        lastModified: '2019-10-29T12:44:06.577Z',
+        _locale: lang
+      }
     });
   });
 
