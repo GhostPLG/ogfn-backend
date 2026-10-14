@@ -13,6 +13,9 @@ import { Matchmaker } from './matchmaker.js';
 import { LobbyService } from './lobby.js';
 import { createGameServerApp } from './gameserver.js';
 import { makeSchema } from './graphql.js';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const contentpages = require('../responses/contentpages.json');
 
 function jsonError(response, status, code, message, extra = {}) {
   return response.status(status).json({
@@ -401,8 +404,21 @@ export async function createBackend(config) {
         'client-events': {
           states: [{
             validFrom: '2020-01-01T00:00:00.000Z',
-            activeEvents: [{ eventType: 'EventFlag.Season', activeUntil: '2099-01-01T00:00:00.000Z', activeSince: '2020-01-01T00:00:00.000Z' }],
-            state: { activeEvents: [{ eventType: 'EventFlag.Season', activeUntil: '2099-01-01T00:00:00.000Z', activeSince: '2020-01-01T00:00:00.000Z' }] }
+            activeEvents: [
+              { eventType: 'EventFlag.Season4', activeUntil: '9999-01-01T00:00:00.000Z', activeSince: '2020-01-01T00:00:00.000Z' },
+              { eventType: 'EventFlag.LobbySeason4', activeUntil: '9999-01-01T00:00:00.000Z', activeSince: '2020-01-01T00:00:00.000Z' }
+            ],
+            state: {
+              activeStorefronts: [],
+              eventNamedWeights: {},
+              seasonNumber: 4,
+              seasonTemplateId: 'AthenaSeason:athenaseason4',
+              seasonBegin: '2020-01-01T00:00:00Z',
+              seasonEnd: '9999-01-01T00:00:00Z',
+              seasonDisplayedEnd: '9999-01-01T00:00:00Z',
+              weeklyStoreEnd: '9999-01-01T00:00:00Z',
+              dailyStoreEnd: '9999-01-01T00:00:00Z'
+            }
           }],
           cacheExpire: '2099-01-01T00:00:00.000Z'
         }
@@ -494,128 +510,47 @@ export async function createBackend(config) {
     response.json({ blockedUsers: [] });
   });
 
+  function resolveTranslations(obj, lang) {
+    if (Array.isArray(obj)) {
+      for (const item of obj) resolveTranslations(item, lang);
+      return obj;
+    }
+    if (obj && typeof obj === 'object') {
+      for (const key in obj) {
+        const val = obj[key];
+        if (val && typeof val === 'object') {
+          if (val[lang] ?? val['en']) obj[key] = val[lang] ?? val['en'];
+          else resolveTranslations(val, lang);
+        }
+      }
+    }
+    return obj;
+  }
+
   app.get('/content/api/pages/fortnite-game', (request, response) => {
+    const cp = JSON.parse(JSON.stringify(contentpages));
+
     const accept = String(request.headers['accept-language'] ?? '');
     const lang = accept
       ? (accept === 'es-419' || accept === 'pt-BR' || !accept.includes('-') ? accept : accept.split('-')[0])
       : 'en';
-    const T = (dict) => dict[lang] ?? dict.en;
 
-    response.json({
-      _title: 'Fortnite Game',
-      _activeDate: '2017-08-30T03:20:48.050Z',
-      lastModified: '2019-11-01T17:33:35.346Z',
-      _locale: lang,
+    // 1) resolve traduções pra strings (igual chooseTranslationsInJSON da LawinServer)
+    resolveTranslations(cp, lang);
 
-      subgameselectdata: {
-        battleRoyale: {
-          _type: 'CommonUI Simple Message',
-          message: {
-            image: '',
-            hidden: false,
-            messagetype: 'normal',
-            _type: 'CommonUI Simple Message Base',
-            title: T({
-              en: '100 Player PvP',
-              'pt-BR': 'PvP de 100 jogadores',
-              'es-419': 'JcJ de 100 jugadores'
-            }),
-            body: T({
-              en: '100 Player PvP Battle Royale.\n\nPvE progress does not affect Battle Royale.',
-              'pt-BR': 'Battle Royale PvP de 100 jogadores.\n\nO progresso no JcE não afeta o Battle Royale.',
-              'es-419': 'Battle Royale JcJ de 100 jugadores.\n\nEl progreso JcE no afecta a Battle Royale.'
-            }),
-            spotlight: false
-          }
-        },
-        saveTheWorld: {
-          _type: 'CommonUI Simple Message',
-          message: {
-            image: '',
-            hidden: false,
-            messagetype: 'normal',
-            _type: 'CommonUI Simple Message Base',
-            title: T({ en: 'Co-op PvE', 'pt-BR': 'PvE Cooperativo', 'es-419': 'JcE cooperativo' }),
-            body: T({
-              en: 'Cooperative PvE adventure!\n\nFight off the Storm and save the world!',
-              'pt-BR': 'Aventura PvE cooperativa!\n\nEnfrente a Tempestade e salve o mundo!',
-              'es-419': '¡Aventura de JcE cooperativa!\n\n¡Combate la tormenta y salva el mundo!'
-            }),
-            spotlight: false
-          }
-        },
-        creative: {
-          _type: 'CommonUI Simple Message',
-          message: {
-            image: '',
-            hidden: false,
-            messagetype: 'normal',
-            _type: 'CommonUI Simple Message Base',
-            title: T({ en: 'Creative', 'pt-BR': 'Criativo', 'es-419': 'Creativo' }),
-            body: T({
-              en: 'Your island. Your friends. Your rules.\n\nDiscover new ways to play Fortnite: play community-made games and build anything on your own island.',
-              'pt-BR': 'Sua ilha. Seus amigos. Suas regras.\n\nDescubra novas formas de jogar Fortnite: jogue criações da comunidade e construa o que quiser na sua ilha.',
-              'es-419': 'Tus islas. Tus amigos. Tus reglas.\n\nDescubre nuevas formas de jugar Fortnite: juega creaciones de la comunidad y construye lo que quieras en tu isla.'
-            }),
-            spotlight: false
-          }
-        },
-        saveTheWorldUnowned: {
-          _type: 'CommonUI Simple Message',
-          message: {
-            image: '',
-            hidden: false,
-            messagetype: 'normal',
-            _type: 'CommonUI Simple Message Base',
-            title: T({ en: 'Co-op PvE', 'pt-BR': 'PvE Cooperativo', 'es-419': 'JcE cooperativo' }),
-            body: T({
-              en: 'Cooperative PvE adventure!\n\nFight off the Storm and save the world!',
-              'pt-BR': 'Aventura PvE cooperativa!\n\nEnfrente a Tempestade e salve o mundo!',
-              'es-419': '¡Aventura de JcE cooperativa!\n\n¡Combate la tormenta y salva el mundo!'
-            }),
-            spotlight: false
-          }
-        },
-        _title: 'subgameselectdata',
-        _noIndex: false,
-        _activeDate: '2019-05-02T16:48:47.429Z',
-        lastModified: '2019-10-29T12:44:06.577Z',
-        _locale: lang
-      },
-
-      subgameinfo: {
-        battleroyale: {
-          image: '',
-          color: '1164c1',
-          _type: 'Subgame Info',
-          description: T({ en: '100 Player PvP', 'pt-BR': 'PvP de 100 jogadores', 'es-419': 'JcJ de 100 jugadores' }),
-          subgame: 'battleroyale',
-          standardMessageLine1: ''
-        },
-        savetheworld: {
-          image: '',
-          color: '7615E9FF',
-          specialMessage: '',
-          _type: 'Subgame Info',
-          description: T({ en: 'Cooperative PvE adventure!', 'pt-BR': 'Aventura PvE cooperativa!', 'es-419': '¡Aventura de JcE cooperativa!' }),
-          subgame: 'savetheworld',
-          title: T({ en: 'Save the World', 'pt-BR': 'Salve o Mundo', 'es-419': 'Salva el mundo' })
-        },
-        creative: {
-          image: '',
-          color: '13BDA1FF',
-          _type: 'Subgame Info',
-          description: T({ en: 'Your island. Your friends. Your rules.', 'pt-BR': 'Sua ilha. Seus amigos. Suas regras.', 'es-419': 'Tus islas. Tus amigos. Tus reglas.' }),
-          subgame: 'creative',
-          title: T({ en: 'Creative', 'pt-BR': 'Criativo', 'es-419': 'Creativo' })
-        },
-        _title: 'SubgameInfo',
-        _noIndex: false,
-        _activeDate: '2019-05-02T16:48:47.429Z',
-        lastModified: '2019-10-29T12:44:06.577Z',
-        _locale: lang
+    // 2) força o tema da Season 4 no lobby 3D
+    cp.lobby = cp.lobby ?? {};
+    cp.lobby.backgroundimage = 'https://fortnite-public-service-prod11.ol.epicgames.com/images/lightlobbybg.png';
+    cp.lobby.stage = 'defaultnotris';
+    const bgs = cp.dynamicbackgrounds?.backgrounds?.backgrounds;
+    if (Array.isArray(bgs)) {
+      for (const b of bgs) {
+        b.stage = 'defaultnotris';
+        b.backgroundimage = 'https://fortnite-public-service-prod11.ol.epicgames.com/images/lightlobbybg.png';
       }
-    });
+    }
+
+    response.json(cp);
   });
 
   app.get('/fortnite/api/game/v2/matchmakingservice/ticket/player/:accountId', authenticate, (request, response) => {
