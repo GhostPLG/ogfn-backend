@@ -94,9 +94,9 @@ export function createEmptyProfile(accountId, profileId, startingVbucks = 0) {
   const now = new Date().toISOString();
   const items = {};
   if (profileId === 'common_core' && Number.isSafeInteger(startingVbucks) && startingVbucks > 0) {
-    items['Currency:MtxPurchased'] = {
+    items['Currency'] = {
       templateId: 'Currency:MtxPurchased',
-      attributes: {},
+      attributes: { platform: 'EpicPC' },
       quantity: startingVbucks
     };
   }
