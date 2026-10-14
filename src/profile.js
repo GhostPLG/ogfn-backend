@@ -220,6 +220,32 @@ export class ProfileService {
           resultProfile = structuredClone(profile);
           return true;
         }
+
+        case 'equipbattleroyalecustomization': {
+          const slotName = String(body.slotName ?? '');
+          const itemId = String(body.itemToSlot ?? '');
+          const index = Number(body.indexWithinSlot ?? 0);
+          const validSlots = new Set(['Character', 'Backpack', 'Pickaxe', 'Glider', 'Dance', 'ItemWrap', 'LoadingScreen', 'MusicPack', 'SkyDiveContrail']);
+          if (!validSlots.has(slotName)) throw new Error(`Invalid slot: ${slotName}`);
+
+          const slots = profile.items.sandbox_loadout.attributes.locker_slots_data.slots;
+          const slot = slots[slotName] ?? { items: [], activeVariants: [] };
+          while (slot.items.length <= index) slot.items.push('');
+          slot.items[index] = itemId;
+          slots[slotName] = slot;
+
+          // sincroniza os favorite_* das stats (é daqui que o cliente lê no boot)
+          const favoriteField = `favorite_${slotName.toLowerCase()}`;
+          if (slotName === 'Dance') {
+            profile.stats.attributes.favorite_dance[index] = itemId;
+          } else if (favoriteField in profile.stats.attributes) {
+            profile.stats.attributes[favoriteField] = itemId;
+          }
+
+          changedItemIds = ['sandbox_loadout', ...(itemId ? [itemId] : [])];
+          break;
+        }
+
         default:
           throw new Error(`Unsupported Athena operation: ${operation}`);
       }
@@ -237,7 +263,7 @@ export class ProfileService {
         profileRevision: resultProfile.rvn,
         profileId,
         profileChangesBaseRevision: oldRevision,
-        profileChanges: changedItemIds.map((itemId) => ({ changeType: 'itemAttrChanged', itemId, attributeName: 'item_seen', attributeValue: resultProfile.items[itemId]?.attributes?.item_seen ?? null })),
+        profileChanges: [{ changeType: 'fullProfileUpdate', profile: structuredClone(resultProfile) }],
         notifications: [],
         commandRevision: resultProfile.commandRevision,
         serverTime: new Date().toISOString(),
