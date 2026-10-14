@@ -723,47 +723,53 @@ export async function createBackend(config) {
     if (!account) return;
     const session = matchmaker.sessionForAccount(account.id, request.params.sessionId);
     if (!session) return jsonError(response, 404, 'session_not_found', 'Match session not found for this account.');
+    const cookieHeader = String(request.headers.cookie ?? '');
+    const buildMatch = /(?:^|;\s*)currentbuildUniqueId=([^;]+)/.exec(cookieHeader);
+    const buildUniqueId = buildMatch ? buildMatch[1] : '4148992';
     return response.json({
       id: session.id,
       ownerId: session.ownerId,
       ownerName: session.ownerName,
-      serverName: `OGFN ${session.playlist}`,
+      serverName: '[DS]fortnite-live-ogfn-4-5',
       serverAddress: session.serverAddress,
       serverPort: session.serverPort,
       maxPublicPlayers: session.maxPublicPlayers,
       openPublicPlayers: session.openPublicPlayers,
       maxPrivatePlayers: 0,
       openPrivatePlayers: 0,
-      attributes: { REGION_s: session.region, GAMEMODE_s: 'FORTATHENA', PLAYLISTNAME_s: session.playlist, MATCHMAKINGPOOL_s: 'Any', ...session.attributes },
-      publicPlayers: session.players.map((player) => ({ playerId: player.accountId, displayName: displayNameForAccount(player.accountId, store), teamId: 1, squadId: 1, isReady: true })),
+      attributes: {
+        REGION_s: session.region ?? 'NAE',
+        GAMEMODE_s: 'FORTATHENA',
+        ALLOWBROADCASTING_b: true,
+        SUBREGION_s: session.region ?? 'NAE',
+        DCID_s: 'FORTNITE-LIVE-OGFN-4-5',
+        tenant_s: 'Fortnite',
+        MATCHMAKINGPOOL_s: 'Any',
+        STORMSHIELDDEFENSETYPE_i: 0,
+        HOTFIXVERSION_i: 0,
+        PLAYLISTNAME_s: session.playlist ?? 'Playlist_DefaultSolo',
+        SESSIONKEY_s: session.id,
+        TENANT_s: 'Fortnite',
+        BEACONPORT_i: 15009
+      },
+      publicPlayers: [],
       privatePlayers: [],
-      totalPlayers: session.players.length,
-      allowJoinInProgress: true,
-      shouldAdvertise: true,
-      started: session.started,
-      lastUpdated: new Date().toISOString()
+      totalPlayers: 1,
+      allowJoinInProgress: false,
+      shouldAdvertise: false,
+      isDedicated: false,
+      usesStats: false,
+      allowInvites: false,
+      usesPresence: false,
+      allowJoinViaPresence: true,
+      allowJoinViaPresenceFriendsOnly: false,
+      buildUniqueId,
+      lastUpdated: new Date().toISOString(),
+      started: false
     });
   });
-  app.post('/fortnite/api/matchmaking/session/:sessionId/join', authenticate, async (request, response) => {
-    const account = requireAccount(request, response);
-    if (!account) return;
-    const session = matchmaker.sessionForAccount(account.id, request.params.sessionId);
-    if (!session) return jsonError(response, 404, 'session_not_found', 'Match session not found for this account.');
-    const currentTicket = matchmaker.getTicketByAccount(account.id);
-    const joinTicket = request.body?.joinTicket ?? request.get('x-ogfn-join-ticket') ?? currentTicket?.joinTicket;
-    try {
-      const gsResponse = await fetch(`${config.gameServer.controlUrl.replace(/\/$/u, '')}/sessions/${encodeURIComponent(session.id)}/join`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ joinTicket }),
-        signal: AbortSignal.timeout(5000)
-      });
-      const result = await gsResponse.json().catch(() => null);
-      if (!gsResponse.ok) return jsonError(response, gsResponse.status, result?.errorCode ?? 'gameserver_join_failed', result?.errorMessage ?? 'GameServer rejected the join request.');
-      return response.status(204).end();
-    } catch (error) {
-      return jsonError(response, 503, 'gameserver_unavailable', `Cannot reach the local GameServer adapter: ${error.message}`);
-    }
+  app.post('/fortnite/api/matchmaking/session/:sessionId/join', authenticate, (request, response) => {
+    response.status(204).end();
   });
   app.delete('/fortnite/api/matchmaking/session/:sessionId', authenticate, async (request, response) => {
     const account = requireAccount(request, response);
@@ -783,9 +789,20 @@ export async function createBackend(config) {
   app.get('/fortnite/api/game/v2/matchmaking/account/:accountId/session/:sessionId', authenticate, (request, response) => {
     if (!accountOwnsPath(request, response, request.params.accountId)) return;
     const session = matchmaker.sessionForAccount(request.params.accountId, request.params.sessionId);
+    if (!session) return jsonError(response, 404, 'session_not_found', 'Match session assignment not found.');
     const ticket = matchmaker.getTicketByAccount(request.params.accountId);
-    if (!session || !ticket?.joinTicket) return jsonError(response, 404, 'session_not_found', 'Match session assignment not found.');
-    return response.json({ accountId: request.params.accountId, sessionId: request.params.sessionId, key: ticket.joinTicket, region: session.region, playlist: session.playlist, serverAddress: session.serverAddress, serverPort: session.serverPort });
+    const key = ticket?.joinTicket
+      ?? session.players.find((p) => p.accountId === request.params.accountId)?.joinTicket
+      ?? 'local';
+    return response.json({
+      accountId: request.params.accountId,
+      sessionId: request.params.sessionId,
+      key: 'AOJEv8uTFmUh7XM2328kq9rlAzeQ5xzWzPIiyKn2s7s=',
+      region: session.region,
+      playlist: session.playlist,
+      serverAddress: session.serverAddress,
+      serverPort: session.serverPort
+    });
   });
   app.get('/api/matchmaking/session/:sessionId', authenticate, (request, response) => {
     const account = requireAccount(request, response);
@@ -793,6 +810,10 @@ export async function createBackend(config) {
     const session = matchmaker.sessionForAccount(account.id, request.params.sessionId);
     if (!session) return jsonError(response, 404, 'session_not_found', 'Match session not found for this account.');
     return response.json(matchmaker.publicSession(session));
+  });
+
+  app.get('/fortnite/api/game/v2/matchmaking/account/:accountId/session/:sessionId/encryption', authenticate, (request, response) => {
+    response.json({ key: 'AOJEv8uTFmUh7XM2328kq9rlAzeQ5xzWzPIiyKn2s7s=', version: 0 });
   });
 
   const schema = makeSchema(services);
@@ -828,12 +849,38 @@ export async function createBackend(config) {
       const playerAuth = await auth.authenticateHeader(token ? `Bearer ${token}` : '');
       if (!playerAuth.account) throw new Error('A player token is required.');
       wss.handleUpgrade(request, socket, head, (websocket) => {
+        const accountId = playerAuth.account.id;
+        const displayName = playerAuth.account.displayName;
         const send = (name, payload) => websocket.send(JSON.stringify({ name, payload }));
+
+        // Cria uma sessão real no store antes de mandar o Play
+        const sessionId = randomUUID().replaceAll('-', '').toUpperCase();
+        const now = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+        store.update((state) => {
+          state.matches[sessionId] = {
+            id: sessionId,
+            ownerId: accountId,
+            ownerName: displayName,
+            playlist: 'Playlist_DefaultSolo',
+            region: 'NAE',
+            serverAddress: config.gameServer.publicHost,
+            serverPort: config.gameServer.port,
+            maxPublicPlayers: 100,
+            openPublicPlayers: 99,
+            started: false,
+            createdAt: now,
+            expiresAt,
+            players: [{ accountId, displayName, ticketId: 'local', joinTicket: 'local' }]
+          };
+          return true;
+        });
+
         send('StatusUpdate', { state: 'Connecting' });
         setTimeout(() => send('StatusUpdate', { totalPlayers: 1, connectedPlayers: 1, state: 'Waiting' }), 800);
         setTimeout(() => send('StatusUpdate', { ticketId: 'ticket', queuedPlayers: 0, estimatedWaitSec: 0, status: {}, state: 'Queued' }), 1800);
-        setTimeout(() => send('StatusUpdate', { matchId: 'match', state: 'SessionAssignment' }), 3800);
-        setTimeout(() => send('Play', { matchId: 'match', sessionId: 'session', joinDelaySec: 1 }), 5800);
+        setTimeout(() => send('StatusUpdate', { matchId: sessionId, state: 'SessionAssignment' }), 3800);
+        setTimeout(() => send('Play', { matchId: sessionId, sessionId, joinDelaySec: 1 }), 5800);
         websocket.on('close', () => {});
       });
     } catch {
