@@ -246,6 +246,27 @@ export class ProfileService {
           break;
         }
 
+        case 'bulkequipbattleroyalecustomization': {
+          const equipItems = Array.isArray(body.equippedItems) ? body.equippedItems : [];
+          const validSlots = new Set(['Character', 'Backpack', 'Pickaxe', 'Glider', 'Dance', 'ItemWrap', 'LoadingScreen', 'MusicPack', 'SkyDiveContrail']);
+          const slots = profile.items.sandbox_loadout.attributes.locker_slots_data.slots;
+          const changed = ['sandbox_loadout'];
+          for (const equip of equipItems) {
+            const slotName = String(equip?.slotName ?? '');
+            const itemId = String(equip?.itemToSlot ?? '');
+            const index = Number(equip?.indexWithinSlot ?? 0);
+            if (!validSlots.has(slotName)) continue;
+            const slot = slots[slotName] ?? { items: [], activeVariants: [] };
+            while (slot.items.length <= index) slot.items.push('');
+            slot.items[index] = itemId;
+            slots[slotName] = slot;
+            if (slotName === 'Dance') profile.stats.attributes.favorite_dance[index] = itemId;
+            else if (`favorite_${slotName.toLowerCase()}` in profile.stats.attributes) profile.stats.attributes[`favorite_${slotName.toLowerCase()}`] = itemId;
+          }
+          changedItemIds = changed;
+          break;
+        }
+
         default:
           throw new Error(`Unsupported Athena operation: ${operation}`);
       }

@@ -1,37 +1,18 @@
 {
-  "title": "OGFN Item Shop",
-  "refreshIntervalHrs": 24,
-  "dailyPurchaseHrs": 24,
-  "expiration": "2099-01-01T00:00:00.000Z",
-  "storefronts": [
-    {
-      "name": "BRWeeklyStorefront",
-      "catalogEntries": [
-        {
-          "offerId": "ogfn-outfit-001",
-          "title": "Starter Outfit",
-          "price": 800,
-          "category": "Outfit",
-          "itemGrants": [
-            {
-              "templateId": "AthenaCharacter:CID_001_Athena_Commando_F_Default",
-              "quantity": 1
-            }
-          ]
-        },
-        {
-          "offerId": "ogfn-emote-001",
-          "title": "Wave",
-          "price": 200,
-          "category": "Emote",
-          "itemGrants": [
-            {
-              "templateId": "AthenaDance:EID_Wave",
-              "quantity": 1
-            }
-          ]
-        }
-      ]
-    }
-  ]
+  "daily1": { 
+    "itemGrants": ["AthenaDance:EID_Wave"], 
+    "price": 200 
+  },
+  "daily2": { 
+    "itemGrants": ["AthenaDance:EID_TrueLove"], 
+    "price": 100 
+  },
+  "featured1": { 
+    "itemGrants": ["AthenaCharacter:CID_001_Athena_Commando_F_Default"], 
+    "price": 800 
+  },
+  "featured2": {
+    "itemGrants": ["AthenaCharacter:CID_035_Athena_Commando_M_Medieval"],
+    "price": 1000
+  }
 }

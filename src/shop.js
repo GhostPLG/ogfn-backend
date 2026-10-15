@@ -1,6 +1,59 @@
 import fs from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 
+function prettyName(templateId) {
+  const raw = String(templateId).split(':').pop() ?? '';
+  return raw.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function categoryOf(templateId) {
+  const id = String(templateId);
+  if (id.includes('AthenaCharacter')) return 'Outfit';
+  if (id.includes('AthenaPickaxe')) return 'Pickaxe';
+  if (id.includes('AthenaGlider')) return 'Glider';
+  if (id.includes('AthenaDance')) return 'Emote';
+  if (id.includes('Backpack')) return 'Backpack';
+  if (id.includes('Wrap')) return 'ItemWrap';
+  return 'Cosmetic';
+}
+
+// Aceita o formato simples { daily1: {...}, featured1: {...} } e converte pro formato interno
+function normalizeShop(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw.storefronts)) return raw;
+  const daily = [];
+  const featured = [];
+  for (const [key, value] of Object.entries(raw)) {
+    if (!value || typeof value !== 'object') continue;
+    const grantsRaw = Array.isArray(value.itemGrants) ? value.itemGrants : [value.itemGrants].filter(Boolean);
+    const itemGrants = grantsRaw
+      .map((g) => (typeof g === 'string' ? { templateId: g, quantity: 1 } : { templateId: String(g.templateId ?? ''), quantity: Number(g.quantity ?? 1) }))
+      .filter((g) => g.templateId);
+    if (itemGrants.length === 0) continue;
+    const isDaily = key.toLowerCase().startsWith('daily');
+    const first = itemGrants[0].templateId;
+    const offer = {
+      offerId: key,
+      title: value.title ?? '',
+      price: Number.isSafeInteger(value.price) ? value.price : 0,
+      sectionId: isDaily ? 'Daily' : 'Featured',
+      tileSize: value.tileSize ?? (isDaily ? 'Small' : 'Normal'),
+      category: value.category ?? categoryOf(first),
+      itemGrants
+    };
+    (isDaily ? daily : featured).push(offer);
+  }
+  return {
+    title: 'OGFN Item Shop',
+    refreshIntervalHrs: 24,
+    dailyPurchaseHrs: 24,
+    expiration: '2099-01-01T00:00:00.000Z',
+    storefronts: [
+      { name: 'BRWeeklyStorefront', catalogEntries: featured },
+      { name: 'BRDailyStorefront', catalogEntries: daily }
+    ]
+  };
+}
+
 function validateShop(config) {
   if (!config || !Array.isArray(config.storefronts)) throw new Error('Shop config must contain a storefronts array.');
   const ids = new Set();
@@ -23,31 +76,40 @@ function validateShop(config) {
 }
 
 function fortniteOffer(offer, expiration) {
+  const templateId = offer.itemGrants[0]?.templateId ?? '';
+  const meta = {
+    SectionId: offer.sectionId ?? 'Featured',
+    LayoutId: 'GhostBackend.99',
+    TileSize: offer.tileSize ?? 'Normal',
+    templateId,
+    inDate: '2018-04-30T00:00:00.000Z',
+    outDate: '9999-12-31T23:59:59.999Z'
+  };
   return {
     offerId: offer.offerId,
     devName: offer.title,
-    offerType: 'StaticPrice',
-    prices: [{ currencyType: 'MtxCurrency', currencySubType: '', regularPrice: offer.price, finalPrice: offer.price, saleExpiration: expiration, basePrice: offer.price }],
-    categories: [offer.category ?? 'Cosmetic'],
+    fulfillmentIds: [],
     dailyLimit: -1,
     weeklyLimit: -1,
     monthlyLimit: -1,
-    appStoreId: [],
-    requirements: [],
-    meta: {},
+    categories: [],
+    prices: [{ currencyType: 'MtxCurrency', currencySubType: '', regularPrice: offer.price, finalPrice: offer.price, saleExpiration: expiration, basePrice: offer.price }],
+    meta,
     matchFilter: '',
     filterWeight: 0,
-    catalogGroup: 'BRWeeklyStorefront',
-    catalogGroupPriority: 0,
-    sortPriority: 0,
-    title: offer.title,
-    shortDescription: offer.description ?? '',
-    description: offer.description ?? '',
-    displayAssetPath: '',
-    itemGrants: offer.itemGrants.map((grant) => ({ templateId: grant.templateId, quantity: grant.quantity })),
+    appStoreId: [],
+    requirements: offer.itemGrants.map((grant) => ({ requirementType: 'DenyOnItemOwnership', requiredId: grant.templateId, minQuantity: 1 })),
+    offerType: 'StaticPrice',
     giftInfo: { bIsEnabled: true, forcedGiftBoxTemplateId: '', purchaseRequirements: [], giftRecordIds: [] },
     refundable: true,
-    assetPath: ''
+    metaInfo: Object.entries(meta).map(([key, value]) => ({ key, value: String(value) })),
+    displayAssetPath: '',
+    itemGrants: offer.itemGrants.map((grant) => ({ templateId: grant.templateId, quantity: grant.quantity })),
+    sortPriority: 0,
+    catalogGroupPriority: 0,
+    title: offer.title ?? '',
+    shortDescription: offer.description ?? '',
+    description: offer.description ?? ''
   };
 }
 
@@ -59,12 +121,12 @@ export class ShopService {
   }
 
   async init() {
-    this.config = validateShop(JSON.parse(await fs.readFile(this.file, 'utf8')));
+    this.config = validateShop(normalizeShop(JSON.parse(await fs.readFile(this.file, 'utf8'))));
     return this;
   }
 
   async reload() {
-    this.config = validateShop(JSON.parse(await fs.readFile(this.file, 'utf8')));
+    this.config = validateShop(normalizeShop(JSON.parse(await fs.readFile(this.file, 'utf8'))));
     return this.config;
   }
 

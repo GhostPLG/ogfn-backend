@@ -429,19 +429,6 @@ export async function createBackend(config) {
     });
   });
 
-  // Loja
-  app.get('/fortnite/api/storefront/v2/catalog', (request, response) => {
-    response.json({
-      refreshIntervalHrs: 24,
-      dailyPurchaseHrs: 24,
-      expiration: '2099-01-01T00:00:00.000Z',
-      storefronts: [
-        { name: 'BRDailyStorefront', catalogEntries: [] },
-        { name: 'BRWeeklyStorefront', catalogEntries: [] }
-      ]
-    });
-  });
-
   // Lista de amigos
   app.get('/friends/api/public/list/fortnite/:accountId', (request, response) => {
     response.json({ friends: [], incoming: [], outgoing: [], suggested: [], blocklist: [], settings: { acceptInvites: 'public' } });
@@ -603,15 +590,26 @@ export async function createBackend(config) {
         const athena = profile.get(accountId, 'athena');
         const core = profile.get(accountId, 'common_core');
         return response.json({
-          profileRevision: athena.rvn,
-          profileId: 'athena',
-          profileChangesBaseRevision: athena.rvn - 1,
-          profileChanges: [{ changeType: 'fullProfileUpdate', profile: athena }],
+          profileRevision: core.rvn,
+          profileId: 'common_core',
+          profileChangesBaseRevision: core.rvn - 1,
+          profileChanges: [{ changeType: 'fullProfileUpdate', profile: core }],
           notifications: [{ type: 'CatalogPurchase', primary: true, purchaseId: purchase.purchaseId, offerId: purchase.offerId, totalMtxPaid: purchase.price, items: purchase.itemGrants }],
-          common_core: fullProfileResponse(core),
-          commandRevision: athena.commandRevision,
+          commandRevision: core.commandRevision,
           serverTime: new Date().toISOString(),
-          multiUpdate: [],
+          multiUpdate: [
+            {
+              profileRevision: athena.rvn,
+              profileId: 'athena',
+              profileChangesBaseRevision: athena.rvn - 1,
+              profileChanges: [{ changeType: 'fullProfileUpdate', profile: athena }],
+              notifications: [],
+              commandRevision: athena.commandRevision,
+              serverTime: new Date().toISOString(),
+              multiUpdate: [],
+              responseVersion: 1
+            }
+          ],
           responseVersion: 1
         });
       } catch (error) {
