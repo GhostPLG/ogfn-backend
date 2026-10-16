@@ -14,6 +14,7 @@ import { LobbyService } from './lobby.js';
 import { createGameServerApp } from './gameserver.js';
 import { makeSchema } from './graphql.js';
 import { createRequire } from 'module';
+import { BattlePassService } from './battlepass.js';
 const require = createRequire(import.meta.url);
 const contentpages = require('../responses/contentpages.json');
 
@@ -114,6 +115,9 @@ export async function createBackend(config) {
   const auth = new AuthService({ store, config });
   const profile = new ProfileService({ store, config });
   const news = await new NewsService(config.newsFile).init();
+  const { BattlePassService } = await import('./battlepass.js');
+  const battlePass = new BattlePassService();
+  battlePass.init()
   const shop = await new ShopService({ file: config.shopFile, store }).init();
   const lobby = new LobbyService({ store });
   const services = { store, auth, profile, news, shop, lobby, matchmaker: null };
@@ -561,7 +565,12 @@ export async function createBackend(config) {
   app.get('/fortnite/api/game/v2/world/info', (_request, response) => response.json({ worldInfo: { worldId: 'Fortnite', season: 1, seasonNumber: 1, seasonTemplateId: 'AthenaSeason:season1', matchEndRewards: [], eventFlags: [] } }));
   app.get('/api/news', (_request, response) => response.json(news.getAll()));
 
-  app.get('/fortnite/api/storefront/v2/catalog', (_request, response) => response.json(shop.storefrontResponse()));
+  app.get('/fortnite/api/storefront/v2/catalog', (request, response) => {
+    const catalog = shop.storefrontResponse();
+    catalog.storefronts.push(battlePass.seasonStorefront());
+    response.json(catalog);
+  });
+  
   app.get('/fortnite/api/storefront/v2/keychain', (_request, response) => response.json([]));
   app.get('/api/shop', (_request, response) => response.json({ storefront: shop.storefrontResponse(), offers: shop.getOffers() }));
   app.get('/api/shop/balance', authenticate, (request, response) => {
@@ -584,36 +593,47 @@ export async function createBackend(config) {
     if (!accountOwnsPath(request, response, accountId)) return;
     const operation = String(request.params.operation ?? 'QueryProfile');
     const profileId = String(request.query.profileId ?? 'athena');
-    if (operation.toLowerCase() === 'purchasecatalogentry') {
+    if (profileId === 'athena' && operation.toLowerCase() === 'clientquestlogin') {
       try {
-        const purchase = await shop.buy(accountId, String(request.body?.offerId ?? ''));
+        await store.update((state) => {
+          battlePass.grantPendingOnLogin(state, accountId);
+          return false;
+        });
+      } catch (err) {
+        console.error('[battlepass] erro no login:', err.message);
+      }
+    }
+    if (operation.toLowerCase() === 'purchasecatalogentry') {
+      console.log('[purchase] cliente pediu profileId:', String(request.query.profileId ?? 'athena'));
+      try {
+        const offerId = String(request.body?.offerId ?? '');
+
+        // Battle pass: débito, token, tiers e recompensas
+        const bpPurchase = await battlePass.purchase(accountId, offerId, store, config);
+
+        // Loja normal
+        const purchase = bpPurchase ?? await shop.buy(accountId, offerId);
+
         const athena = profile.get(accountId, 'athena');
         const core = profile.get(accountId, 'common_core');
+
         return response.json({
           profileRevision: core.rvn,
           profileId: 'common_core',
           profileChangesBaseRevision: core.rvn - 1,
-          profileChanges: [{ changeType: 'fullProfileUpdate', profile: core }],
+          profileChanges: [
+            { changeType: 'fullProfileUpdate', profile: core },
+            { changeType: 'fullProfileUpdate', profile: athena, profileId: 'athena' }
+          ],
           notifications: [{ type: 'CatalogPurchase', primary: true, purchaseId: purchase.purchaseId, offerId: purchase.offerId, totalMtxPaid: purchase.price, items: purchase.itemGrants }],
           commandRevision: core.commandRevision,
           serverTime: new Date().toISOString(),
-          multiUpdate: [
-            {
-              profileRevision: athena.rvn,
-              profileId: 'athena',
-              profileChangesBaseRevision: athena.rvn - 1,
-              profileChanges: [{ changeType: 'fullProfileUpdate', profile: athena }],
-              notifications: [],
-              commandRevision: athena.commandRevision,
-              serverTime: new Date().toISOString(),
-              multiUpdate: [],
-              responseVersion: 1
-            }
-          ],
+          multiUpdate: [],
           responseVersion: 1
         });
       } catch (error) {
-        return jsonError(response, toStatus(error), error.code ?? 'purchase_failed', error.message, { balance: error.balance, price: error.price });
+        return jsonError(response, toStatus(error), error.code ?? 'purchase_failed',
+        error.message, { balance: error.balance, price: error.price });
       }
     }
     try {

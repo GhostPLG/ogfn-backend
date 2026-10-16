@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+export { BATTLE_PASS_OFFERS } from './battlepass.js';
 
 function prettyName(templateId) {
   const raw = String(templateId).split(':').pop() ?? '';
